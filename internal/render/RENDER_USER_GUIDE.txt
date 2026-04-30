@@ -1,0 +1,57 @@
+RENDER PACKAGE USER GUIDE
+=========================
+
+INTRODUCTION
+-----------
+The render package provides functionality for rendering HTML templates in a web application.
+
+INSTALLATION
+-----------
+Import it in your Go code: import "github.com/sabrodigan/bookings-app/internal/render"
+
+SETUP
+-----
+Initialize with your application's configuration using render.NewTemplates(&app).
+
+TEMPLATE STRUCTURE
+-----------------
+Templates should be in "./templates" with .page.tmpl and .layout.tmpl extensions.
+
+CORE FUNCTIONS
+-------------
+
+NewTemplates
+-----------
+Sets the configuration for the template package.
+
+CreateTemplateCache
+-----------------
+Creates a cache of parsed templates from the templates directory.
+
+AddDefaultData
+------------
+Adds common data to all templates, such as flash messages and CSRF tokens.
+
+RenderTemplate
+------------
+Renders an HTML template with provided data to the HTTP response writer.
+
+TEMPLATE DATA
+------------
+Uses models.TemplateData struct to pass data to templates.
+
+CONFIGURATION OPTIONS
+-------------------
+Uses UseCache, TemplateCache, and Session from config.AppConfig.
+
+BEST PRACTICES
+-------------
+Enable caching in production, handle errors, and use template layouts.
+
+TROUBLESHOOTING
+--------------
+Check for template existence, syntax errors, and correct data passing.
+
+EXAMPLE
+-------
+Initialize the package, create a template cache, and render templates in handlers.

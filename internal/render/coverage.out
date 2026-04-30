@@ -1,0 +1,23 @@
+mode: set
+github.com/sabrodigan/bookings-app/internal/render/render.go:26.40,28.2 1 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:31.84,37.2 5 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:40.105,43.18 2 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:43.18,46.3 1 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:46.8,48.3 1 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:50.2,51.9 2 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:51.9,53.3 1 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:55.2,60.16 5 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:60.16,63.3 2 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:64.2,64.12 1 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:68.67,73.16 3 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:73.16,75.3 1 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:77.2,77.29 1 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:77.29,80.17 3 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:80.17,82.4 1 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:84.3,85.17 2 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:85.17,87.4 1 0
+github.com/sabrodigan/bookings-app/internal/render/render.go:89.3,89.23 1 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:89.23,91.18 2 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:91.18,93.5 1 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:96.3,96.21 1 1
+github.com/sabrodigan/bookings-app/internal/render/render.go:99.2,99.21 1 1
