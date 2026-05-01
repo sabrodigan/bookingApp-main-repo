@@ -3,7 +3,6 @@ package main
 
 import (
 	"encoding/gob"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -33,11 +32,6 @@ func main() {
 	if err != nil {
 		log.Fatal("cannot start application: ", err)
 	}
-
-	// This message now appears after the server is ready to listen
-	helpers.TypeWriter("\n\nListening for requests on port ", 50)
-	helpers.TypeWriter(portNumber, 50)
-	fmt.Println()
 
 	srv := &http.Server{
 		Addr:    portNumber,

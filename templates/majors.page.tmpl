@@ -37,7 +37,7 @@
 
             <div class="col text-center">
 
-                <a id="check-availability-button" href="#!" class="btn btn-success">Check Availability</a>
+                <button id="check-availability-button" type="button" class="btn btn-success">Check Availability</button>
 
             </div>
         </div>
@@ -68,10 +68,39 @@
             </div>
         </form>
         `;
-            attention.custom({
-                title: 'Choose your dates',
-                msg: html,
-            });
-        })
+        attention.custom({
+            title: 'Choose your dates',
+            msg: html,
+            willOpen: () => {
+                const elem = document.getElementById("reservation-dates-modal");
+                new DateRangePicker(elem, {
+                    format: 'yyyy-mm-dd',
+                    showOnFocus: true,
+                })
+            },
+            didOpen: () => {
+                document.getElementById("start").removeAttribute("disabled");
+                document.getElementById("end").removeAttribute("disabled");
+            },
+            callback: function() {
+                console.log("called");
+
+                let form = document.getElementById("check-availability-form");
+                let formData = new FormData(form);
+                formData.append("csrf_token", "{{.CSRFToken}}");
+
+                fetch('/search-availability-json', {
+                    method: "post",
+                    body: formData,
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                        console.log(data.ok);
+                        console.log(data.message);
+                    })
+            }
+        });
+    })
     </script>
 {{end}}
