@@ -60,6 +60,8 @@ func run() error {
 
 	// Now that audio is initialized, we can print the startup message
 	helpers.TypeWriter("Starting the application server... ", 50)
+	helpers.TypeWriter("\n\nListening for requests on port ", 50)
+	helpers.TypeWriter(portNumber, 50)
 
 	// change this to true when in production
 	app.InProduction = false
