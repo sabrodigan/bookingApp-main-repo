@@ -10,6 +10,7 @@ import (
 	"github.com/sabrodigan/bookings-app/internal/config"
 	"github.com/sabrodigan/bookings-app/internal/models"
 	"github.com/sabrodigan/bookings-app/internal/render"
+	"github.com/sabrodigan/bookings-app/internal/repository/dbrepo"
 	"html/template"
 	"log"
 	"net/http"
@@ -55,7 +56,7 @@ func getRoutes() http.Handler {
 	app.TemplateCache = tc
 	app.UseCache = true
 
-	repo := NewRepo(&app)
+	repo := NewRepo(&app, dbrepo.NewTestRepo(&app))
 	NewHandlers(repo)
 	render.NewTemplates(&app)
 

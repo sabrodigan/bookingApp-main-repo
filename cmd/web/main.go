@@ -3,6 +3,7 @@ package main
 
 import (
 	"encoding/gob"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,10 +12,13 @@ import (
 
 	"github.com/alexedwards/scs/v2"
 	"github.com/sabrodigan/bookings-app/internal/config"
+	"github.com/sabrodigan/bookings-app/internal/driver"
 	"github.com/sabrodigan/bookings-app/internal/handlers"
 	"github.com/sabrodigan/bookings-app/internal/helpers"
 	"github.com/sabrodigan/bookings-app/internal/models"
 	"github.com/sabrodigan/bookings-app/internal/render"
+	"github.com/sabrodigan/bookings-app/internal/repository/dbrepo"
+	"github.com/joho/godotenv"
 )
 
 const portNumber = ":8080"
@@ -47,6 +51,12 @@ func main() {
 func run() error {
 	// set up the application config
 	gob.Register(models.Reservation{})
+	_ = godotenv.Load()
+
+	dbDriver := os.Getenv("DB_DRIVER")
+	if dbDriver == "" {
+		dbDriver = "postgres"
+	}
 
 	// Initialize helpers and the audio system FIRST
 	helpers.NewHelpers(&app)
@@ -87,8 +97,39 @@ func run() error {
 	app.TemplateCache = tc
 	app.UseCache = false
 
-	repo := handlers.NewRepo(&app)
-	handlers.NewHandlers(repo)
+	log.Println("Connecting to database...")
+	var dbConn *driver.DB
+
+	switch dbDriver {
+	case "mongo":
+		mongoURI := os.Getenv("MONGO_URI")
+		if mongoURI == "" {
+			mongoURI = "mongodb://localhost:27017"
+		}
+		dbConn, err = driver.ConnectMongo(mongoURI)
+		if err != nil {
+			log.Fatal("Cannot connect to MongoDB: ", err)
+		}
+		handlers.NewHandlers(handlers.NewRepo(&app, dbrepo.NewMongoRepo(dbConn.Client, &app)))
+		log.Println("Connected to MongoDB!")
+	default:
+		dsn := os.Getenv("DATABASE_URL")
+		if dsn == "" {
+			host := envOr("POSTGRES_HOST", "127.0.0.1")
+			port := envOr("POSTGRES_PORT", "5432")
+			user := envOr("POSTGRES_USER", "postgres")
+			pass := envOr("POSTGRES_PASSWORD", "postgres")
+			dbname := envOr("POSTGRES_DB", "devdb")
+			dsn = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+				host, port, user, pass, dbname)
+		}
+		dbConn, err = driver.ConnectPostgres(dsn)
+		if err != nil {
+			log.Fatal("Cannot connect to PostgreSQL: ", err)
+		}
+		handlers.NewHandlers(handlers.NewRepo(&app, dbrepo.NewPostgresRepo(dbConn.SQL, &app)))
+		log.Println("Connected to PostgreSQL!")
+	}
 
 	render.NewTemplates(&app)
 
@@ -102,6 +143,13 @@ func run() error {
 	}
 
 	return nil
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 // clearScreen clears the terminal screen

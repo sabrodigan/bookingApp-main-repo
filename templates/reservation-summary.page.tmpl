@@ -37,6 +37,24 @@
                             <td>phone:</td>
                             <td>{{ $res.Phone }}</td>
                         </tr>
+                        {{ if $res.RoomName }}
+                        <tr>
+                            <td>Room:</td>
+                            <td>{{ $res.RoomName }}</td>
+                        </tr>
+                        {{ end }}
+                        {{ if $res.StartDate }}
+                        <tr>
+                            <td>Arrival:</td>
+                            <td>{{ $res.StartDate }}</td>
+                        </tr>
+                        {{ end }}
+                        {{ if $res.EndDate }}
+                        <tr>
+                            <td>Departure:</td>
+                            <td>{{ $res.EndDate }}</td>
+                        </tr>
+                        {{ end }}
                     </tbody>
                 </table>
             </div>

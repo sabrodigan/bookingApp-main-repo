@@ -6,8 +6,10 @@ import (
 	"github.com/sabrodigan/bookings-app/internal/config"
 	"github.com/sabrodigan/bookings-app/internal/forms"
 	"github.com/sabrodigan/bookings-app/internal/helpers"
+	"github.com/sabrodigan/bookings-app/internal/mail"
 	"github.com/sabrodigan/bookings-app/internal/models"
 	"github.com/sabrodigan/bookings-app/internal/render"
+	"github.com/sabrodigan/bookings-app/internal/repository"
 	"log"
 	"net/http"
 )
@@ -18,12 +20,14 @@ var Repo *Repository
 // Repository is the repository type
 type Repository struct {
 	App *config.AppConfig
+	DB  repository.DatabaseRepo
 }
 
 // NewRepo creates a new repository
-func NewRepo(a *config.AppConfig) *Repository {
+func NewRepo(a *config.AppConfig, db repository.DatabaseRepo) *Repository {
 	return &Repository{
 		App: a,
+		DB:  db,
 	}
 }
 
@@ -92,7 +96,14 @@ func (m *Repository) PostReservation(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	m.App.Session.Put(r.Context(), "reservation", reservation)
+	
+	resID, err := m.DB.InsertReservation(reservation)
+	if err != nil {
+		helpers.ServerError(w, err)
+		return
+	}
+	
+	m.App.Session.Put(r.Context(), "reservation_id", resID)
 	http.Redirect(w, r, "/reservation-summary", http.StatusSeeOther)
 }
 
@@ -125,24 +136,127 @@ func (m *Repository) PostAvailability(w http.ResponseWriter, r *http.Request) {
 }
 
 type jsonResponse struct {
-	OK      bool   `json:"ok"`
-	Message string `json:"message"`
+	OK        bool   `json:"ok"`
+	Message   string `json:"message"`
+	StartDate string `json:"start_date,omitempty"`
+	EndDate   string `json:"end_date,omitempty"`
+	RoomID    string `json:"room_id,omitempty"`
+	RoomName  string `json:"room_name,omitempty"`
+}
+
+func writeJSON(w http.ResponseWriter, v interface{}) {
+	out, err := json.MarshalIndent(v, "", "     ")
+	if err != nil {
+		helpers.ServerError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(out)
 }
 
 // AvailabilityJSON handles requests for availability and sends JSON response
 func (m *Repository) AvailabilityJSON(w http.ResponseWriter, r *http.Request) {
-	resp := jsonResponse{
-		OK:      true,
-		Message: "Available!",
+	if err := r.ParseForm(); err != nil {
+		helpers.ServerError(w, err)
+		return
 	}
 
-	out, err := json.MarshalIndent(resp, "", "     ")
+	start := r.Form.Get("start")
+	end := r.Form.Get("end")
+	roomID := r.Form.Get("room_id")
+	roomName := r.Form.Get("room_name")
+
+	if start == "" || end == "" {
+		writeJSON(w, jsonResponse{
+			OK:      false,
+			Message: "Please choose arrival and departure dates.",
+		})
+		return
+	}
+
+	if start >= end {
+		writeJSON(w, jsonResponse{
+			OK:      false,
+			Message: "Departure must be after arrival.",
+		})
+		return
+	}
+
+	writeJSON(w, jsonResponse{
+		OK:        true,
+		Message:   "Available!",
+		StartDate: start,
+		EndDate:   end,
+		RoomID:    roomID,
+		RoomName:  roomName,
+	})
+}
+
+// PostBookNow creates a booking from email + dates and sends a confirmation email
+func (m *Repository) PostBookNow(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		helpers.ServerError(w, err)
+		return
+	}
+
+	email := r.Form.Get("email")
+	start := r.Form.Get("start")
+	end := r.Form.Get("end")
+	roomID := r.Form.Get("room_id")
+	roomName := r.Form.Get("room_name")
+
+	form := forms.New(r.PostForm)
+	form.Required("email", "start", "end")
+	form.IsEmail("email")
+
+	if start == "" || end == "" || start >= end {
+		form.Errors.Add("", "Invalid dates selected")
+	}
+
+	if !form.Valid() {
+		writeJSON(w, jsonResponse{
+			OK:      false,
+			Message: "Please provide a valid email and dates.",
+		})
+		return
+	}
+
+	reservation := models.Reservation{
+		FirstName: "Guest",
+		LastName:  "Booking",
+		Email:     email,
+		Phone:     "—",
+		StartDate: start,
+		EndDate:   end,
+		RoomID:    roomID,
+		RoomName:  roomName,
+	}
+
+	resID, err := m.DB.InsertReservation(reservation)
 	if err != nil {
 		helpers.ServerError(w, err)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(out)
+	if err := mail.SendBookingConfirmation(reservation); err != nil {
+		m.App.ErrorLog.Println("booking confirmation email:", err)
+		writeJSON(w, jsonResponse{
+			OK:      false,
+			Message: "Booking saved but we could not send the confirmation email. Please contact us.",
+		})
+		return
+	}
+
+	m.App.Session.Put(r.Context(), "reservation_id", resID)
+
+	writeJSON(w, jsonResponse{
+		OK:        true,
+		Message:   fmt.Sprintf("Confirmation sent to %s", email),
+		StartDate: start,
+		EndDate:   end,
+		RoomID:    roomID,
+		RoomName:  roomName,
+	})
 }
 
 // Contact renders the contact page
@@ -152,7 +266,7 @@ func (m *Repository) Contact(w http.ResponseWriter, r *http.Request) {
 }
 
 func (m *Repository) ReservationSummary(w http.ResponseWriter, r *http.Request) {
-	reservation, ok := m.App.Session.Get(r.Context(), "reservation").(models.Reservation)
+	reservationID, ok := m.App.Session.Get(r.Context(), "reservation_id").(string)
 	if !ok {
 		//log.Println("cannot find session data for reservation")
 		m.App.ErrorLog.Println("cannot find session data for reservation")
@@ -160,12 +274,21 @@ func (m *Repository) ReservationSummary(w http.ResponseWriter, r *http.Request) 
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
+	
+	reservation, err := m.DB.GetReservationByID(reservationID)
+	if err != nil {
+		m.App.ErrorLog.Println("cannot fetch reservation from database")
+		m.App.Session.Put(r.Context(), "error", "Can't get reservation from database")
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+
 	data := make(map[string]interface{})
 	data["reservation"] = reservation
 	render.RenderTemplate(w, r, "reservation-summary.page.tmpl", &models.TemplateData{
 		Data: data,
 	})
-	m.App.Session.Remove(r.Context(), "reservation")
+	m.App.Session.Remove(r.Context(), "reservation_id")
 }
 func (m *Repository) Error(w http.ResponseWriter, r *http.Request) {
 	log.Println("Error page has been called")
